@@ -14,6 +14,4 @@ function maskify(cc) {
         mask = cc;
         return mask;
     }
-
-
 }
