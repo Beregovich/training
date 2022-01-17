@@ -9,10 +9,11 @@ function isValidIP(str) {
     }
     for (let value of ipArr) {
         if (value != "0") {
-            if (!(/(^([1-9])[0-9]([0-9])$)|(^([1-9])([0-9])$)|(^[1-9]$)/.test(ipArr)) || parseInt(value) < 0 || parseInt(value) > 255) {
-                return false;
+            if (true) {
+                if (parseInt(value) < 0 || parseInt(value) > 255 || /^0/.test(value) || !(/^[0-9]{1,3}$/.test(value))) {
+                    return false;
+                }
             }
-
         }
     }
     return true;
