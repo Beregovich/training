@@ -1,9 +1,9 @@
 var maxSequence = function (arr) {
-    if (arr.length < 1) return 0;
+    let lgth = arr.length;
+    if (lgth < 1) return 0;
     let max = arr[0];
-    let end = arr[arr.length - 1];
-    for (let i = 0; i <= end; i++) {
-        let k = maxSeq(arr.slice(end - i + 1));
+    for (let i = 0; i <= lgth - 1; i++) {
+        let k = maxSeq(arr.slice(lgth - i));
         if (k > max) {
             max = k;
         }
@@ -12,7 +12,7 @@ var maxSequence = function (arr) {
 }
 const maxSeq = function (subArr) {
     let max = subArr[0];
-    let kontainer = 0;
+    let kontainer = subArr[0];
     for (let i = 1; i < subArr.length; i++) {
         kontainer += subArr[i];
         if (max < kontainer) {
