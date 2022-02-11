@@ -1,3 +1,4 @@
+//Product of consecutive Fib numbers
 export class G964 {
 
     public static productFib = (prod) => {
