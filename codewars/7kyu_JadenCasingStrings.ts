@@ -1,3 +1,7 @@
+//7kyu Jaden Casing Strings
+
+//Use cycle
+
 String.prototype.toJadenCase = function () {
     let str : string = this;
     let arr : string[] = [];
@@ -17,3 +21,6 @@ String.prototype.toJadenCase = function () {
 
 //Use replace and RegExp
 
+String.prototype.toJadenCase = function () {
+    this.replace(/(^|\s)[a-z]/g, (letter) => letter.toUpperCase())
+}
