@@ -66,3 +66,61 @@ step 5
 Информацию отсортировать в алфавитном порядке, сначала по фамилии водителя,
 потом по номеру машины и, наконец, по нарушению.
 */
+SELECT name, number_plate, violation
+FROM fine
+GROUP BY name, number_plate, violation
+HAVING count(*)>=2
+ORDER BY name ASC, number_plate, violation;
+
+/*
+step 6
+В таблице fine увеличить в два раза сумму неоплаченных штрафов для отобранных на предыдущем шаге записей.
+*/
+UPDATE fine, (
+    SELECT name, number_plate, violation
+    FROM fine
+    GROUP BY name, number_plate, violation
+    HAVING count(*)>=2
+) AS query_in
+SET sum_fine=sum_fine*2
+WHERE fine.name = query_in.name
+    AND fine.number_plate=query_in.number_plate
+    AND fine.violation=query_in.violation
+    AND fine.date_payment IS NULL;
+SELECT * FROM fine;
+
+/*
+step 7
+Водители оплачивают свои штрафы. В таблице payment занесены даты их оплаты.
+Необходимо:
+1)в таблицу fine занести дату оплаты соответствующего штрафа из таблицы payment;
+2)уменьшить начисленный штраф в таблице fine в два раза  (только для тех штрафов, информация о которых занесена
+в таблицу payment) , если оплата произведена не позднее 20 дней со дня нарушения.
+*/
+UPDATE fine, payment
+SET fine.date_payment=IF(fine.date_payment IS NULL, payment.date_payment, fine.date_payment),
+    fine.sum_fine=IF( (DATEDIFF(payment.date_payment, fine.date_violation))<=20, fine.sum_fine/2, fine.sum_fine)
+WHERE fine.name=payment.name
+    AND fine.number_plate=payment.number_plate
+    AND fine.violation=payment.violation
+    AND fine.date_violation=payment.date_violation;
+SELECT * FROM fine;
+
+/*
+step 8
+Создать новую таблицу back_payment, куда внести информацию о неоплаченных штрафах
+(Фамилию и инициалы водителя, номер машины, нарушение, сумму штрафа  и  дату нарушения) из таблицы fine.
+*/
+CREATE TABLE back_payment AS
+SELECT name, number_plate, violation, sum_fine, date_violation
+FROM fine
+WHERE date_payment IS NULL;
+SELECT * FROM back_payment;
+
+/*
+step 9
+Удалить из таблицы fine информацию о нарушениях, совершенных раньше 1 февраля 2020 года.
+*/
+DELETE FROM fine
+WHERE date_violation < '2020-02-01';
+SELECT * FROM fine;
