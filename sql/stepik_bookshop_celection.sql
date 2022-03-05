@@ -73,6 +73,18 @@ buy_step_id	    buy_id	step_id	    date_step_beg	date_step_end
 15	                4	    3
 16	                4	    4
 
+
+Информация о продажах предыдущего года хранится в архивной таблице buy_archive:
+Название столбца	            Описание
+buy_archive_id	                ключевой столбец
+buy_id	                        idзаказов, выбирается из таблицы buy
+client_id	                    idклиентов, выбирается из из таблицы client
+book_id	                        idкниги, выбирается из таблицы book
+date_payment	                дата оплаты заказа, выбирается из столбца date_step_end
+                                таблицы buy_step этапа «Оплата» соответствующего заказа
+price	                        цена книги в текущем заказе из таблицы book
+                                (хранится, так как цена может измениться )
+amount	                        количество купленных книг в текущем заказе, из таблицы buy_book
 */
 
 
@@ -156,3 +168,103 @@ STEP 11
 указать количество дней задержки, в противном случае вывести 0. В результат включить номер заказа (buy_id),
 а также вычисляемые столбцы Количество_дней и Опоздание. Информацию вывести в отсортированном по номеру заказа виде.
 */
+SELECT
+    buy_step.buy_id,
+    DATEDIFF(buy_step.date_step_end, buy_step.date_step_beg) AS Количество_дней,
+    IF(DATEDIFF(buy_step.date_step_end, buy_step.date_step_beg)>city.days_delivery,
+      DATEDIFF(buy_step.date_step_end, buy_step.date_step_beg)-city.days_delivery, 0) AS Опоздание
+    FROM
+    step
+    INNER JOIN buy_step ON step.step_id=buy_step.step_id
+    INNER JOIN buy ON buy.buy_id=buy_step.buy_id
+    INNER JOIN client ON buy.client_id=client.client_id
+    INNER JOIN city ON client.city_id=city.city_id
+
+    WHERE buy_step.date_step_end IS NOT NULL
+    AND buy_step.date_step_beg IS NOT NULL
+    AND step.step_id=3;
+
+/*
+step 12
+Выбрать всех клиентов, которые заказывали книги Достоевского, информацию вывести в отсортированном по алфавиту виде.
+В решении используйте фамилию автора, а не его id.
+*/
+SELECT DISTINCT client.name_client
+FROM
+client
+    INNER JOIN buy ON buy.client_id = client.client_id
+    INNER JOIN buy_book ON buy.buy_id = buy_book.buy_id
+    INNER JOIN book ON buy_book.book_id = book.book_id
+    INNER JOIN author ON book.author_id = author.author_id
+WHERE  author.name_author="Достоевский Ф.М."
+ORDER BY client.name_client ASC;
+
+/*
+step 13
+Вывести жанр (или жанры), в котором было заказано больше всего экземпляров книг, указать это количество .
+Последний столбец назвать Количество.
+*/
+SELECT genre.name_genre, SUM(buy_book.amount) AS Количество
+FROM
+    genre
+    INNER JOIN book ON book.genre_id = genre.genre_id
+    INNER JOIN buy_book ON buy_book.book_id = book.book_id
+GROUP BY genre.name_genre
+HAVING Количество = (SELECT MAX(sub_query.am) FROM
+    (
+    SELECT (SUM(buy_book.amount)) AS am
+    FROM
+    genre
+    INNER JOIN book ON book.genre_id = genre.genre_id
+    INNER JOIN buy_book ON buy_book.book_id = book.book_id
+    GROUP BY genre.name_genre
+    )sub_query)
+ORDER BY Количество DESC
+
+/*
+step 14
+равнить ежемесячную выручку от продажи книг за текущий и предыдущий годы.
+Для этого вывести год, месяц, сумму выручки в отсортированном сначала по возрастанию месяцев,
+затем по возрастанию лет виде. Название столбцов: Год, Месяц, Сумма.
+*/
+SELECT YEAR(date_step_end) AS Год, MONTHNAME(date_step_end) AS Месяц, SUM(buy_book.amount*book.price) AS Сумма FROM
+    buy_step
+    INNER JOIN buy_book ON buy_book.buy_id = buy_step.buy_id
+    INNER JOIN book ON buy_book.book_id = book.book_id
+    WHERE step_id=1 AND date_step_end IS NOT NULL
+    GROUP BY 2, 1
+UNION
+
+SELECT YEAR(date_payment) AS Год, MONTHNAME(date_payment) AS Месяц, SUM(amount*price) AS СУММА FROM buy_archive
+WHERE date_payment IS NOT NULL
+GROUP BY 2, 1
+ORDER BY Месяц, Год
+
+/*
+step 15
+Для каждой отдельной книги необходимо вывести информацию о количестве проданных экземпляров и их стоимости за
+текущий и предыдущий год . Вычисляемые столбцы назвать Количество и Сумма.
+Информацию отсортировать по убыванию стоимости
+*/
+SELECT title, SUM(Количество) AS Количество, SUM(Сумма) AS Сумма FROM (
+SELECT title,
+SUM(buy_book.amount) AS Количество,
+SUM(buy_book.amount*book.price) AS Сумма
+FROM
+buy_step
+INNER JOIN buy_book USING(buy_id)
+INNER JOIN book USING (book_id)
+WHERE date_step_end IS NOT NULL AND buy_step.step_id=1
+GROUP BY 1
+
+UNION ALL
+
+SELECT title,
+SUM(buy_archive.amount) AS Количество,
+SUM(buy_archive.amount*buy_archive.price) AS Сумма
+FROM buy_archive INNER JOIN book USING(book_id)
+WHERE date_payment IS NOT NULL
+GROUP BY 1
+)qp1
+GROUP BY title
+ORDER BY Сумма DESC
